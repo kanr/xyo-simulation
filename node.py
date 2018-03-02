@@ -6,14 +6,14 @@ class Node:
         self.chain = []  # The Proof of Origin chain on the node
         self.loc = loc  # The 1D location of the node
         self.id = id  # The ID of the node (parallel of XYO address)
-        self.radius = 1  # The max radius of Bluetooth connections
+        self.radius = 2  # The max radius of Bluetooth connections
         self.choosyNodeScores = {}  # A dict of how "choosy" each node is
 
     # Connects to all nodes within radius
     def connect_with_nearby_nodes(self, nodes):
         for node in nodes:
-            if abs(node.loc - self.loc) <= self.radius and node.id != self.id:
-                node.hs1(node)
+            if abs(node.loc - self.loc) <= self.radius:
+                self.hs1(node)
 
     # Handshake step 1
     def hs1(self, node):
@@ -38,10 +38,24 @@ class Node:
         self.chain.append(packet)  # Add new packet
         return packet
 
-    # Returns the perceived credibility of another node
-    def subjective_credibility(self, node):
-        cScore = 0 if node.id not in self.choosyNodeScores.keys() else self.choosyNodeScores[node.id]
-        return len(node.chain) - cScore
+    @staticmethod
+    def packet_equals(packet1, packet2):
+        return packet1[0] == packet2[0] \
+               and ((packet1[1] == packet2[1] and packet1[2] == packet2[2] and packet1[3] == packet2[3])
+                    or (packet1[1] == packet2[2] and packet1[2] == packet2[1] and packet1[3] == -packet2[3]))
+
+    def overlap_with_network(self, nodes):
+        overlap = 1e-10
+        for node in nodes:
+            for packet1 in node.chain:
+                for packet2 in self.chain:
+                    if self.packet_equals(packet1, packet2):
+                        overlap += 1
+        return overlap
+
+    def pseudo_chain_score(self, nodes):
+        return len(self.chain) * len(nodes) \
+               / self.overlap_with_network(nodes) - sum(map(lambda x: x.choosyNodeScores.get(self.id, 0), nodes))
 
 
 class CartelNode(Node):
@@ -56,7 +70,11 @@ class CartelNode(Node):
         return super().hs3(node)
 
 
-class CartelDeceptionNode(CartelNode):
+class CartelDeceptionNode(Node):
+    def __init__(self, loc, id, buddyIDs):
+        super().__init__(loc, id)
+        self.buddyIDs = buddyIDs
+
     # Only connects with nodes not in the same cartel as itself
     def hs3(self, node):
         if node.id in self.buddyIDs:
