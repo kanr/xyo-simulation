@@ -8,6 +8,8 @@ def print_node_scores(nodes):
     for n0 in nodes:
         print('ID:', n0.id, 'Score:', n0.pseudo_chain_score(list(filter(lambda x: x.id != n0.id, nodes))))
 
+    print()
+
 if __name__ == '__main__':
     cartelIDs1 = [1, 2, 4, 5]
     nodes1 = [
@@ -31,7 +33,17 @@ if __name__ == '__main__':
         node.Node(6, 6)
     ]
 
+    nodes3 = [
+        node.Node(0, 0),
+        node.Node(1, 1),
+        node.Node(2, 2),
+        node.LyingNode(3, 3),
+        node.Node(4, 4),
+        node.Node(5, 5),
+        node.Node(6, 6)
+    ]
+
     print_node_scores(nodes1)
-    print()
     print_node_scores(nodes2)
+    print_node_scores(nodes3)
 

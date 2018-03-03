@@ -44,6 +44,12 @@ class Node:
                and ((packet1[1] == packet2[1] and packet1[2] == packet2[2] and packet1[3] == packet2[3])
                     or (packet1[1] == packet2[2] and packet1[2] == packet2[1] and packet1[3] == -packet2[3]))
 
+    @staticmethod
+    def packet_conflicts(packet1, packet2):
+        return packet1[0] == packet2[0] \
+               and ((packet1[1] == packet2[1] and packet1[2] == packet2[2] and packet1[3] != packet2[3])
+                    or (packet1[1] == packet2[2] and packet1[2] == packet2[1] and packet1[3] != -packet2[3]))
+
     def overlap_with_network(self, nodes):
         overlap = 1e-10
         for node in nodes:
@@ -53,9 +59,20 @@ class Node:
                         overlap += 1
         return overlap
 
+    def conflicts_with_network(self, nodes):
+        conflicts = 0
+        for node in nodes:
+            for packet1 in node.chain:
+                for packet2 in self.chain:
+                    if self.packet_conflicts(packet1, packet2):
+                        conflicts += 1
+        return conflicts
+
     def pseudo_chain_score(self, nodes):
         return len(self.chain) * len(nodes) \
-               / self.overlap_with_network(nodes) - sum(map(lambda x: x.choosyNodeScores.get(self.id, 0), nodes))
+               / self.overlap_with_network(nodes) \
+               - sum(map(lambda x: x.choosyNodeScores.get(self.id, 0), nodes)) \
+               - self.conflicts_with_network(nodes)
 
 
 class CartelNode(Node):
@@ -80,3 +97,11 @@ class CartelDeceptionNode(Node):
         if node.id in self.buddyIDs:
             return None
         return super().hs3(node)
+
+
+class LyingNode(Node):
+    # Handshake step 3
+    def hs3(self, node):
+        packet = (datetime.datetime.now(), self.id, node.id, node.loc - self.loc + 20)
+        self.chain.append(packet)  # Add new packet
+        return packet
